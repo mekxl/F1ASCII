@@ -1,127 +1,81 @@
 const trackElement = document.getElementById("game");
-
-const INTERLAGOS_TRACK = [
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-    " |                          | ",
-];
-
-let playerPosition = { x: 20, y: 18 };
+const trackSegments = [];
+const segmentHeight = 5; // Altura de cada segmento da pista
+const segmentWidth = 40; // Largura de cada segmento da pista
+let playerPosition = { x: 20, y: 2 };
 let lapCount = 0;
 let raceStarted = false;
-let opponents = [
-    { x: 15, y: 5, direction: 1 }, // Carro 1
-    { x: 25, y: 10, direction: -1 }, // Carro 2
-];
 
-function renderTrack(track, playerPos) {
-    const output = track.map((line, y) => {
-        if (y === playerPos.y) {
-            return line.substring(0, playerPos.x) + "^" + line.substring(playerPos.x + 1);
+function generateTrackSegment() {
+    const segment = [];
+    for (let i = 0; i < segmentHeight; i++) {
+        let line = " |";
+        for (let j = 1; j < segmentWidth - 1; j++) {
+            line += Math.random() < 0.2 ? "A" : " "; // 20% de chance de ter um carro adversário
         }
-        return line;
-    });
-
-    // Desenhar os adversários
-    opponents.forEach(opponent => {
-        if (opponent.y < track.length) {
-            const line = output[opponent.y].split("");
-            line[opponent.x] = "A"; // Representa o carro adversário
-            output[opponent.y] = line.join("");
-        }
-    });
-
-    trackElement.textContent = output.join("\n");
-    checkLapCompletion(); // Verifica se o jogador completou uma volta
+        line += "|";
+        segment.push(line);
+    }
+    return segment;
 }
 
-function renderStartLights(step) {
-    const lights = ["🔴", "🔴", "🔴", "🔴", "🔴"];
-    let output = "\n\n\n";
-    output += "    " + lights.map((l, i) => (i < step ? l : "⚫")).join(" ") + "\n";
-    output += "\nPREPARE-SE...\n";
-    trackElement.textContent = output;
+function renderTrack() {
+    const output = [];
+    for (let i = 0; i < segmentHeight; i++) {
+        if (trackSegments.length > i) {
+            output.push(trackSegments[i]);
+        } else {
+            output.push(" |" + " ".repeat(segmentWidth - 2) + "|"); // Linha vazia se não houver segmento
+        }
+    }
+    const playerLine = output[playerPosition.y].split("");
+    playerLine[playerPosition.x] = "^"; // Representa o carro do jogador
+    output[playerPosition.y] = playerLine.join("");
+    trackElement.textContent = output.join("\n");
 }
 
 function startRace() {
     raceStarted = true;
     lapCount = 1; // Começa a contagem de voltas
-    renderTrack(INTERLAGOS_TRACK, playerPosition);
-    moveOpponents(); // Inicia o movimento dos adversários
+    trackSegments.push(generateTrackSegment()); // Adiciona o primeiro segmento
+    renderTrack();
+    movePlayer();
 }
 
-function showLightsAndStartRace() {
-    let step = 0;
-    const interval = setInterval(() => {
-        step++;
-        renderStartLights(step);
-        if (step >= 5) {
-            clearInterval(interval);
-            setTimeout(startRace, 1000);
-        }
-    }, 800);
-}
-
-function moveOpponents() {
-    opponents.forEach(opponent => {
-        opponent.x += opponent.direction; // Move o carro adversário
-        // Verifica se o carro adversário bateu nas bordas
-        if (opponent.x <= 1 || opponent.x >= INTERLAGOS_TRACK[0].length - 2) {
-            opponent.direction *= -1; // Inverte a direção
-        }
-        // Verifica colisão com o jogador
-        if (opponent.x === playerPosition.x && opponent.y === playerPosition.y) {
-            alert("Colisão! Você foi ultrapassado!");
-            resetRace();
-        }
-    });
-    renderTrack(INTERLAGOS_TRACK, playerPosition);
+function movePlayer() {
     if (raceStarted) {
-        setTimeout(moveOpponents, 1000); // Move os adversários a cada segundo
+        // Adiciona um novo segmento à pista a cada movimento do jogador
+        if (playerPosition.y < segmentHeight - 1) {
+            playerPosition.y++;
+        } else {
+            trackSegments.push(generateTrackSegment());
+            playerPosition.y = 0; // Reseta a posição do jogador para o início do novo segmento
+        }
+        renderTrack();
+        setTimeout(movePlayer, 1000); // Move o jogador a cada segundo
     }
 }
 
-function checkLapCompletion() {
-    if (playerPosition.y === 0) { // Supondo que a linha 0 é a linha de chegada
-        lapCount++;
-        if (lapCount > 5) {
-            alert("Você completou a corrida!");
-            resetRace();
-        } else {
-            playerPosition.y = 18; // Volta para a posição inicial
+// Função para mover o jogador
+function controlPlayer(direction) {
+    if (direction === 'up' && playerPosition.y > 0) {
+        playerPosition.y--;
+    } else if (direction === 'down' && playerPosition.y < segmentHeight - 1) {
+        playerPosition.y++;
+    }
+    renderTrack();
+}
+
+// Adiciona eventos de teclado para movimentar o jogador
+document.addEventListener('keydown', (event) => {
+    if (raceStarted) {
+        if (event.key === 'ArrowUp' || event.key === 'w') {
+            controlPlayer('up');
+        } else if (event.key === 'ArrowDown' || event.key === 's') {
+            controlPlayer('down');
         }
     }
-}
-
-function resetRace() {
-    raceStarted = false;
-    lapCount = 0;
-    playerPosition = { x: 20, y: 18 };
-    opponents = [
-        { x:  15, y: 5, direction: 1 },
-        { x: 25, y: 10, direction: -1 },
-    ];
-    renderTrack(INTERLAGOS_TRACK, playerPosition);
-    setTimeout(showLightsAndStartRace, 2000);
-}
+});
 
 // Início do jogo
-renderTrack(INTERLAGOS_TRACK, playerPosition);
-setTimeout(showLightsAndStartRace, 2000);
+setTimeout(startRace, 2000);
